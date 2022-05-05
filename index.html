@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf8" />
+    <title>Map</title>
+    <style>
+      body, html {
+        background-color: #333;
+        color: #aaa;
+      }
+      .map-grid {
+        border-spacing: 0;
+        border-collapse: collapse;
+      }
+      .map-grid td {
+        padding: 0;
+        margin: 0;
+        font-size: 0;
+        line-height: 0;
+      }
+      .map-grid img {
+        image-rendering: pixelated;
+      }
+      [name="zoomlevel"][value="1x"]:checked ~ .map-grid {
+        transform-origin: 0 0;
+        transform: scale(1);
+      }
+      [name="zoomlevel"][value="2x"]:checked ~ .map-grid {
+        transform-origin: 0 0;
+        transform: scale(2);
+      }
+      [name="zoomlevel"][value="3x"]:checked ~ .map-grid {
+        transform-origin: 0 0;
+        transform: scale(3);
+      }
+      [name="zoomlevel"][value="4x"]:checked ~ .map-grid {
+        transform-origin: 0 0;
+        transform: scale(4);
+      }
+    </style>
+  </head>
+  <body>
+    <input type="file">
+
+    <input type="radio" value="1x" name="zoomlevel" id="zoomlevel-1x" checked>
+    <label for="zoomlevel-1x">1x</label>
+    <input type="radio" value="2x" name="zoomlevel" id="zoomlevel-2x">
+    <label for="zoomlevel-2x">2x</label>
+    <input type="radio" value="3x" name="zoomlevel" id="zoomlevel-3x">
+    <label for="zoomlevel-3x">3x</label>
+    <input type="radio" value="4x" name="zoomlevel" id="zoomlevel-4x">
+    <label for="zoomlevel-4x">4x</label>
+
+    <table class="map-grid"></table>
+    <script src="pako-inflate-2.0.4.min.js"></script>
+    <script>
+      const fileInput = document.querySelector('input[type="file"]');
+      const mapGrid = document.querySelector('.map-grid');
+      fileInput.addEventListener('change', function handleFile(event) {
+        const file = this.files[0];
+        const reader = new FileReader();
+        reader.onload = function handleData(event) {
+          const dataAsUint8Array = pako.inflate(event.target.result);
+          const dataAsJsonString = new TextDecoder().decode(dataAsUint8Array);
+          const data = JSON.parse(dataAsJsonString);
+          console.log(data);
+          const minX = Math.min(...data.mapParts.keys.map(position => position.x));
+          const minY = Math.min(...data.mapParts.keys.map(position => position.y));
+          const maxX = Math.max(...data.mapParts.keys.map(position => position.x));
+          const maxY = Math.max(...data.mapParts.keys.map(position => position.y));
+          const positionToIndex = data.mapParts.keys.map(position => `${position.x},${position.y}`);
+          let mapGridHtmlString = '';
+          for (let y = maxY; y >= minY; y--) {
+            mapGridHtmlString += '<tr>';
+            for (let x = minX; x <= maxX; x++) {
+              const index = positionToIndex.indexOf(`${x},${y}`);
+              if (index === -1) {
+                mapGridHtmlString += '<td></td>';
+                continue;
+              }
+              const pngAsUint8Array = new Uint8Array(data.mapParts.values[index].png);
+              const pngAsBlob = new Blob([pngAsUint8Array], {'type': 'image/png'});
+              mapGridHtmlString += `<td><img src="${URL.createObjectURL(pngAsBlob)}" /></td>`;
+            }
+            mapGridHtmlString += '</tr>';
+          }
+          mapGrid.innerHTML = mapGridHtmlString;
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    </script>
+  </body>
+</html>
